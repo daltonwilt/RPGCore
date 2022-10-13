@@ -1,0 +1,8 @@
+name: RPGCore
+version: '${project.version}'
+main: com.outcast.rpgcore.RPGCore
+api-version: 1.19
+depend: [ Vault ]
+authors: [ Hexacorx ]
+description: The core utilities behind the Outcast server. This plugin doesn't have any functionality just a dependencies and utilities for other Outcast plugins.
+website: www.outcastrpg.com
