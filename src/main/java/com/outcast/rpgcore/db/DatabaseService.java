@@ -16,12 +16,12 @@ import static com.mongodb.client.model.Filters.and;
 import static com.mongodb.client.model.Filters.eq;
 import static com.mongodb.client.model.Updates.*;
 
-public class DbService {
+public class DatabaseService {
 
     private static ConnectionString connectionString;
     private static MongoClient client;
 
-    public DbService() {}
+    public DatabaseService() {}
 
     public void init() {
         System.out.println("Starting database...");

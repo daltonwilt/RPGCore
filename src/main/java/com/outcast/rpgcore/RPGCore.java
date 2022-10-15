@@ -3,7 +3,7 @@ package com.outcast.rpgcore;
 import com.outcast.rpgcore.combat.CombatLog;
 import com.outcast.rpgcore.command.CommandService;
 import com.outcast.rpgcore.command.commands.CommandCore;
-import com.outcast.rpgcore.db.DbService;
+import com.outcast.rpgcore.db.DatabaseService;
 import com.outcast.rpgcore.listener.RPGCoreListener;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.event.Listener;
@@ -17,13 +17,9 @@ import java.util.logging.Level;
 public final class RPGCore extends JavaPlugin {
 
     private static RPGCore instance;
-
     private Level logLevel = Level.INFO;
-
     private CoreConfig coreConfig;
-
     private CombatLog combatLog;
-
     private Economy economy;
 
     //===========================================================================================================
@@ -144,7 +140,7 @@ public final class RPGCore extends JavaPlugin {
         }
 
         // Load Database settings
-        DbService connection = new DbService();
+        DatabaseService connection = new DatabaseService();
         connection.init();
 
         // Register Events (Listeners)
