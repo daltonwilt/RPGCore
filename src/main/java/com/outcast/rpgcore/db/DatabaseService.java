@@ -1,77 +1,74 @@
 package com.outcast.rpgcore.db;
 
-import com.mongodb.ConnectionString;
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
-import com.mongodb.client.MongoCollection;
-import org.bson.Document;
-import org.bson.conversions.Bson;
+import com.outcast.rpgcore.db.migration.DatabaseMigrator;
+import com.outcast.rpgcore.event.RepositoryConfigurationEvent;
+import jakarta.persistence.EntityManagerFactory;
+import org.bukkit.Bukkit;
+import org.hibernate.boot.MetadataSources;
+import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.hibernate.service.ServiceRegistry;
 
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.Properties;
 
-import static com.mongodb.client.model.Filters.and;
-import static com.mongodb.client.model.Filters.eq;
-import static com.mongodb.client.model.Updates.*;
+public class DatabaseService implements AutoCloseable {
 
-public class DatabaseService {
+    private JPA jpa;
 
-    private static ConnectionString connectionString;
-    private static MongoClient client;
+    private EntityManagerFactory entityManagerFactory;
 
-    public DatabaseService() {}
+    public DatabaseService(JPA jpa) {
+        this.jpa = jpa;
 
-    public void init() {
-        System.out.println("Starting database...");
-        System.out.println("");
+        // database migrator initialize
+        DatabaseMigrator migrator = new DatabaseMigrator(jpa);
+        migrator.migrate();
 
-        Logger.getLogger("org.mongodb.driver").setLevel(Level.WARNING);
-
-        connectionString = new ConnectionString("mongodb+srv://Hexacorx:Aer432Kol7833@outcast-data.tenmjmf.mongodb.net/?retryWrites=true&w=majority");
-        client = MongoClients.create(connectionString);
-
-        // calling methods to mongoClient
-//        create();
+        createEntityManagerFactory();
     }
 
-    // create
-    private static void create(List<Document> documents, String collectionName, String databaseName) {
-        MongoCollection<Document> characters = client.getDatabase("rpg-class").getCollection("character");
-
-//        Document data = new Document("Class", "Mage")
-//                .append("Level", 24)
-//                .append("Experience", 427)
-//                .append("Profession", "Alchemist");
-
-        // characters.insertOne(data);
-        characters.insertMany(documents);
+    public EntityManagerFactory getEntityManagerFactory() {
+        return entityManagerFactory;
     }
 
-    // read
-    private static void read(MongoClient client) {
-        List<Document> documents = client.listDatabases().into(new ArrayList<>());
-        documents.forEach(document -> System.out.println(document.toJson()));
+    private void createEntityManagerFactory() {
+        MetadataSources metadataSources = new MetadataSources(configureServiceRegistry(jpa));
+        addClasses(metadataSources);
+
+        entityManagerFactory = (EntityManagerFactory) metadataSources.buildMetadata()
+                .getSessionFactoryBuilder()
+                .build();
     }
 
-    // update
-    private static void update(List<Document> documents, String collectionName, String databaseName) {
-        MongoCollection<Document> characters = client.getDatabase("rpg-class").getCollection("character");
-
-        Bson filter = eq("", 100);
-        Bson updateOperations = set("comment", "You should learn mongo");
-
-        filter = and(eq("student_id", 10002d), eq("class_id", 10d));
-
-
-        characters.updateMany(filter, updateOperations);
+    private ServiceRegistry configureServiceRegistry(JPA jpa) {
+        return new StandardServiceRegistryBuilder()
+                .applySettings(getProperties(jpa))
+                .build();
     }
 
-    // delete
-    private static void delete(MongoClient client) {
-        List<Document> documents = client.listDatabases().into(new ArrayList<>());
-        documents.forEach(document -> System.out.println(document.toJson()));
+    private Properties getProperties(JPA jpa) {
+        Properties properties = new Properties();
+        jpa.HIBERNATE.forEach(properties::setProperty);
+        return properties;
     }
+
+    private void addClasses(MetadataSources metadataSources) {
+        List<Class<?>> classes = new LinkedList<>();
+
+        // Call configuration event
+        RepositoryConfigurationEvent event = new RepositoryConfigurationEvent(classes);
+        Bukkit.getPluginManager().callEvent(event);
+
+        classes.forEach(metadataSources::addAnnotatedClass);
+    }
+
+    @Override
+    public void close() {
+        if (entityManagerFactory != null ) {
+            entityManagerFactory.close();
+        }
+    }
+
 
 }

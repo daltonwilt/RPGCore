@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.outcast.rpgcore.config.ConfigService;
 import com.outcast.rpgcore.config.jackson.DurationDeserializer;
 import com.outcast.rpgcore.config.jackson.DurationSerializer;
+import com.outcast.rpgcore.db.JPA;
 
 
 import java.io.IOException;
@@ -21,6 +22,9 @@ public class CoreConfig extends ConfigService {
 
     @JsonProperty("db-enabled")
     public boolean DB_ENABLED = true;
+
+    @JsonProperty("jpa")
+    public JPA JPA_CONFIG = new JPA();
 
     public CoreConfig() throws IOException {
         super("config/rpgcore", "config.json", FileType.JSON);

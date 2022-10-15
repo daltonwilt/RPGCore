@@ -1,11 +1,12 @@
 package com.outcast.rpgcore;
 
 import com.outcast.rpgcore.combat.CombatLog;
-import com.outcast.rpgcore.command.CommandService;
-import com.outcast.rpgcore.command.commands.CommandCore;
 import com.outcast.rpgcore.db.DatabaseService;
+import com.outcast.rpgcore.event.RepositoryInitializedEvent;
 import com.outcast.rpgcore.listener.RPGCoreListener;
+import jakarta.persistence.EntityManagerFactory;
 import net.milkbowl.vault.economy.Economy;
+import org.bukkit.Bukkit;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.RegisteredServiceProvider;
@@ -20,6 +21,7 @@ public final class RPGCore extends JavaPlugin {
     private Level logLevel = Level.INFO;
     private CoreConfig coreConfig;
     private CombatLog combatLog;
+    private DatabaseService databaseService;
     private Economy economy;
 
     //===========================================================================================================
@@ -36,6 +38,14 @@ public final class RPGCore extends JavaPlugin {
 
     public static CombatLog getCombatLog() {
         return getInstance().combatLog;
+    }
+
+    public static DatabaseService getDatabaseService() {
+        return getInstance().databaseService;
+    }
+
+    public static EntityManagerFactory getEntityManagerFactory() {
+        return getDatabaseService().getEntityManagerFactory();
     }
 
     public static Economy getEconomy() {
@@ -121,16 +131,6 @@ public final class RPGCore extends JavaPlugin {
         info("  You're running on %s.", getServer().getVersion());
         printDivider();
 
-        // Register Command Manager
-        try {
-            CommandService.createCommand(this, "core", "Command prefix for RPGCore.", "/core", CommandCore.class);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            e.printStackTrace();
-        }
-
-        // Check if vault dependency exists and register Economy
-        setupEconomy();
-
         // Initialize Configuration settings
         try {
             coreConfig = new CoreConfig();
@@ -140,21 +140,33 @@ public final class RPGCore extends JavaPlugin {
         }
 
         // Load Database settings
-        DatabaseService connection = new DatabaseService();
-        connection.init();
+        if(coreConfig.DB_ENABLED) {
+            databaseService = new DatabaseService(coreConfig.JPA_CONFIG);
+        }
+
+        // Initialize combat logging data
+        this.combatLog = new CombatLog();
+        combatLog.init();
+
+        //post Repository Initialized event
+        Bukkit.getPluginManager().callEvent(new RepositoryInitializedEvent(databaseService.getEntityManagerFactory()));
+
+        // Check if vault dependency exists and register Economy
+        setupEconomy();
 
         // Register Events (Listeners)
         getServer().getPluginManager().registerEvents((Listener)new RPGCoreListener(), (Plugin)this);
 
         // Register Menu Manager
-
-        // Initialize combat logging data
-        this.combatLog = new CombatLog();
-        combatLog.init();
     }
 
     @Override
     public void onDisable() {
+        // close database service
+        if(coreConfig.DB_ENABLED) {
+            databaseService.close();
+        }
+
         info("RPGCore v%s is being disabled.", getDescription().getVersion());
     }
 

@@ -1,59 +1,170 @@
 package com.outcast.rpgcore.db;
 
+import com.outcast.rpgcore.RPGCore;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.Transaction;
+import org.hibernate.query.Query;
+
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
-public interface Repository<T extends Identifiable<ID>, ID extends Serializable> {
+public class Repository<T extends Identifiable<ID>, ID extends Serializable> implements IRepository<T, ID> {
 
-    /**
-     * Find an entity by it's id
-     *
-     * @param id The id to look for
-     * @return An optional containing the entity. Empty if not found.
-     */
-    Optional<T> findById(ID id);
+    protected SessionFactory sessionFactory;
 
-    void saveOne(T entity);
+    protected Class<T> persistable;
 
-    void saveAll(Collection<T> entities);
+    public Repository(Class<T> persistable) {
+        this.persistable = persistable;
+        EntityManagerFactory entityManagerFactory = RPGCore.getEntityManagerFactory();
 
-    void deleteOne(T entity);
+        if(entityManagerFactory instanceof SessionFactory) {
+            this.sessionFactory = (SessionFactory) entityManagerFactory;
+        } else {
+            throw new IllegalStateException("JPA implementation is not Hibernate ( EMF is not instance of SessionFactory ).");
+        }
+    }
 
-    void deleteAll(Collection<T> entities);
+    private void merge(T entity, Session session) {
+        session.merge(entity);
+    }
 
-    /**
-     * Insert or Update an entity to the database
-     *
-     * @param entity The entity to persist
-     */
-    CompletableFuture<Void> saveOneAsync(T entity);
+    private void remove(T entity, Session session) {
+        session.remove(entity);
+    }
 
-    /**
-     * Insert or Update multiple entities to the database
-     *
-     * @param entities The entities to persist
-     */
-    CompletableFuture<Void> saveAllAsync(Collection<T> entities);
+    protected void transactionOf(Consumer<Session> sessionConsumer) {
+        try (Session session = sessionFactory.openSession()) {
+            Transaction transaction = null;
 
-    /**
-     * Delete an entity from the database
-     *
-     * @param entity The entity to delete
-     */
-    CompletableFuture<Void> deleteOneAsync(T entity);
+            try {
+                transaction = session.beginTransaction();
+                sessionConsumer.accept(session);
+                session.flush();
+                transaction.commit();
+            } catch(Exception e) {
+                if(transaction != null) {
+                    transaction.rollback();
+                }
+                e.printStackTrace();
+            }
+        }
+    }
 
-    /**
-     * Delete multiple entities from the database
-     *
-     * @param entities The entities to delete
-     */
-    CompletableFuture<Void> deleteAllAsync(Collection<T> entities);
+    protected CompletableFuture<Void> asyncTransactionOf(Consumer<Session> sessionConsumer) {
+        return CompletableFuture.runAsync(() -> transactionOf(sessionConsumer));
+    }
 
-    //===========================================================================================================
-    //  Query functions below for querying single multiple and execution of mongodb.
-    //===========================================================================================================
+    @Override
+    public Optional<T> findById(ID id) {
+        T result;
+        Session session = sessionFactory.openSession();
+        result = session.find(persistable, id);
+        session.close();
+        return Optional.ofNullable(result);
+    }
+
+    @Override
+    public void mergeOne(T entity) {
+        transactionOf(session -> merge(entity, session));
+    }
+
+    @Override
+    public void mergeAll(Collection<T> entities) {
+        transactionOf(session -> entities.forEach(entity -> merge(entity, session)));
+    }
+
+    @Override
+    public void removeOne(T entity) {
+        transactionOf(session -> remove(entity, session));
+    }
+
+    @Override
+    public void removeAll(Collection<T> entities) {
+        transactionOf(session -> entities.forEach(entity -> remove(entity, session)));
+    }
+
+    @Override
+    public CompletableFuture<Void> mergeOneAsync(T entity) {
+        return null;
+    }
+
+    @Override
+    public CompletableFuture<Void> mergeAllAsync(Collection<T> entities) {
+        return asyncTransactionOf(session -> entities.forEach(entity -> merge(entity, session)));
+    }
+
+    @Override
+    public CompletableFuture<Void> removeOneAsync(T entity) {
+        return asyncTransactionOf(session -> remove(entity, session));
+    }
+
+    @Override
+    public CompletableFuture<Void> removeAllAsync(Collection<T> entities) {
+        return asyncTransactionOf(session -> entities.forEach(entity -> remove(entity, session)));
+    }
+
+    @Override
+    public CriteriaBuilder getCriteriaBuilder() {
+        return sessionFactory.getCriteriaBuilder();
+    }
+
+    @Override
+    public void execute(String sql, Consumer<Query> setParams) {
+        try (Session session = sessionFactory.openSession()) {
+            Query query = session.createQuery(sql);
+            setParams.accept(query);
+            query.executeUpdate();
+        }
+    }
+
+
+    @Override
+    public <R> void querySingle(String sql, Class<R> result, Consumer<Query> setParams, Consumer<Optional<R>> resultConsumer) {
+        try (Session session = sessionFactory.openSession()) {
+            Query<R> query = session.createQuery(sql, result);
+            setParams.accept(query);
+            R r = query.getSingleResult();
+            resultConsumer.accept(Optional.ofNullable(r));
+        }
+    }
+
+    @Override
+    public <R> void queryMultiple(String sql, Class<R> result, Consumer<Query> setParams, Consumer<Collection<R>> resultConsumer) {
+        try (Session session = sessionFactory.openSession()) {
+            Query<R> query = session.createQuery(sql, result);
+            setParams.accept(query);
+            List<R> r = query.getResultList();
+            resultConsumer.accept(r);
+        }
+    }
+
+    @Override
+    public <R> void querySingle(CriteriaQuery<R> query, Consumer<Query> setParams, Consumer<Optional<R>> resultConsumer) {
+        try (Session session = sessionFactory.openSession()) {
+            Query<R> q = session.createQuery(query);
+            setParams.accept(q);
+            R r = q.getSingleResult();
+            resultConsumer.accept(Optional.ofNullable(r));
+        }
+    }
+
+    @Override
+    public <R> void queryMultiple(CriteriaQuery<R> query, Consumer<Query> setParams, Consumer<Collection<R>> resultConsumer) {
+        try (Session session = sessionFactory.openSession()) {
+            Query<R> q = session.createQuery(query);
+            setParams.accept(q);
+            List<R> r = q.getResultList();
+            resultConsumer.accept(r);
+        }
+    }
 
 }
