@@ -1,6 +1,6 @@
-package com.outcast.rpgcore.db.cache;
+package com.outcast.rpgcore.storage.cache;
 
-import com.outcast.rpgcore.db.Identifiable;
+import com.outcast.rpgcore.storage.Identifiable;
 
 import java.io.Serializable;
 import java.util.Collection;

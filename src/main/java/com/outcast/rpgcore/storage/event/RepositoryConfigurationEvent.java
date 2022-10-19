@@ -1,4 +1,4 @@
-package com.outcast.rpgcore.event;
+package com.outcast.rpgcore.storage.event;
 
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;

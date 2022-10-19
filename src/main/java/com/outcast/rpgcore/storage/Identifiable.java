@@ -1,4 +1,4 @@
-package com.outcast.rpgcore.db;
+package com.outcast.rpgcore.storage;
 
 import javax.annotation.Nonnull;
 import java.io.Serializable;

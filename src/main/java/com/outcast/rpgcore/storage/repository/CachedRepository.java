@@ -1,11 +1,11 @@
-package com.outcast.rpgcore.db;
+package com.outcast.rpgcore.storage.repository;
 
-import com.outcast.rpgcore.db.cache.Cache;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.Root;
-import org.hibernate.query.Query;
+import com.outcast.rpgcore.storage.Identifiable;
+import com.outcast.rpgcore.storage.cache.Cache;
 
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Root;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.Optional;
@@ -79,22 +79,22 @@ public class CachedRepository<T extends Identifiable<ID>, ID extends Serializabl
     }
 
     @Override
-    public <R> void querySingle(String jpql, Class<R> result, Consumer<Query> setParams, Consumer<Optional<R>> resultConsumer) {
+    public <R> void querySingle(String jpql, Class<R> result, Consumer<javax.persistence.Query> setParams, Consumer<Optional<R>> resultConsumer) {
         throw new UnsupportedOperationException("Cannot query cached repositories. Use findAll, findOne, or extend a non-cached repository instead.");
     }
 
     @Override
-    public <R> void queryMultiple(String jpql, Class<R> result, Consumer<Query> setParams, Consumer<Collection<R>> resultConsumer) {
+    public <R> void queryMultiple(String jpql, Class<R> result, Consumer<javax.persistence.Query> setParams, Consumer<Collection<R>> resultConsumer) {
         throw new UnsupportedOperationException("Cannot query cached repositories. Use findAll, findOne, or extend a non-cached repository instead.");
     }
 
     @Override
-    public <R> void querySingle(CriteriaQuery<R> query, Consumer<Query> setParams, Consumer<Optional<R>> resultConsumer) {
+    public <R> void querySingle(CriteriaQuery<R> query, Consumer<javax.persistence.Query> setParams, Consumer<Optional<R>> resultConsumer) {
         throw new UnsupportedOperationException("Cannot query cached repositories. Use findAll, findOne, or extend a non-cached repository instead.");
     }
 
     @Override
-    public <R> void queryMultiple(CriteriaQuery<R> query, Consumer<Query> setParams, Consumer<Collection<R>> resultConsumer) {
+    public <R> void queryMultiple(CriteriaQuery<R> query, Consumer<javax.persistence.Query> setParams, Consumer<Collection<R>> resultConsumer) {
         throw new UnsupportedOperationException("Cannot query cached repositories. Use findAll, findOne, or extend a non-cached repository instead.");
     }
 

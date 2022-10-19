@@ -1,10 +1,9 @@
 package com.outcast.rpgcore;
 
 import com.outcast.rpgcore.combat.CombatLog;
-import com.outcast.rpgcore.db.DatabaseService;
-import com.outcast.rpgcore.event.RepositoryInitializedEvent;
+import com.outcast.rpgcore.storage.DatabaseService;
 import com.outcast.rpgcore.listener.RPGCoreListener;
-import jakarta.persistence.EntityManagerFactory;
+import com.outcast.rpgcore.storage.event.RepositoryInitializedEvent;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.event.Listener;
@@ -12,6 +11,7 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import javax.persistence.EntityManagerFactory;
 import java.io.IOException;
 import java.util.logging.Level;
 
@@ -44,12 +44,12 @@ public final class RPGCore extends JavaPlugin {
         return getInstance().databaseService;
     }
 
-    public static EntityManagerFactory getEntityManagerFactory() {
-        return getDatabaseService().getEntityManagerFactory();
-    }
-
     public static Economy getEconomy() {
         return getInstance().economy;
+    }
+
+    public static EntityManagerFactory getEntityManagerFactory() {
+        return getDatabaseService().getEntityManagerFactory();
     }
 
     //===========================================================================================================
@@ -91,9 +91,14 @@ public final class RPGCore extends JavaPlugin {
     }
 
     private void printBlank() { info(""); }
+
     private void printDivider() {
         info("============================================================================================");
     }
+
+    //===========================================================================================================
+    // Server setup/load methods
+    //===========================================================================================================
 
     private void setupEconomy() {
         boolean setup = true;
@@ -116,21 +121,7 @@ public final class RPGCore extends JavaPlugin {
         }
     }
 
-    //===========================================================================================================
-    // onEnable onDisable methods.
-    //===========================================================================================================
-
-    @Override
-    public void onEnable() {
-        // Setting logger level and plugin instance
-        instance = this;
-
-        printDivider();
-        printBlank();
-        info("  RPGCore v%s", getDescription().getVersion());
-        info("  You're running on %s.", getServer().getVersion());
-        printDivider();
-
+    private void initialize() {
         // Initialize Configuration settings
         try {
             coreConfig = new CoreConfig();
@@ -139,25 +130,49 @@ public final class RPGCore extends JavaPlugin {
             e.printStackTrace();
         }
 
-        // Load Database settings
+        // Initialize Database settings
         if(coreConfig.DB_ENABLED) {
-            databaseService = new DatabaseService(coreConfig.JPA_CONFIG);
+            databaseService = new DatabaseService(coreConfig.JPA);
         }
+
+        // Call database initialize event
+        Bukkit.getPluginManager().callEvent(new RepositoryInitializedEvent(databaseService.getEntityManagerFactory()));
 
         // Initialize combat logging data
         this.combatLog = new CombatLog();
         combatLog.init();
 
-        //post Repository Initialized event
-        Bukkit.getPluginManager().callEvent(new RepositoryInitializedEvent(databaseService.getEntityManagerFactory()));
+        // Initialize Menu
+    }
+
+    private void  register() {
+        // Register Events (Listeners)
+        getServer().getPluginManager().registerEvents((Listener)new RPGCoreListener(), (Plugin)this);
+    }
+
+    private void load() {
+        instance = this;
+
+        printDivider();
+        printBlank();
+        info("  RPGCore v%s", getDescription().getVersion());
+        info("  You're running on %s.", getServer().getVersion());
+        printDivider();
+
+        initialize();
+        register();
 
         // Check if vault dependency exists and register Economy
         setupEconomy();
+    }
 
-        // Register Events (Listeners)
-        getServer().getPluginManager().registerEvents((Listener)new RPGCoreListener(), (Plugin)this);
+    //===========================================================================================================
+    // onEnable onDisable methods.
+    //===========================================================================================================
 
-        // Register Menu Manager
+    @Override
+    public void onEnable() {
+        load();
     }
 
     @Override

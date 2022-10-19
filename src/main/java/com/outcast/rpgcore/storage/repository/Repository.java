@@ -1,14 +1,16 @@
-package com.outcast.rpgcore.db;
+package com.outcast.rpgcore.storage.repository;
 
 import com.outcast.rpgcore.RPGCore;
-import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
+import com.outcast.rpgcore.storage.Identifiable;
+
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 import org.hibernate.query.Query;
 
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
@@ -44,28 +46,29 @@ public class Repository<T extends Identifiable<ID>, ID extends Serializable> imp
     protected void transactionOf(Consumer<Session> sessionConsumer) {
         try (Session session = sessionFactory.openSession()) {
             Transaction transaction = null;
-
             try {
                 transaction = session.beginTransaction();
                 sessionConsumer.accept(session);
                 session.flush();
                 transaction.commit();
             } catch(Exception e) {
-                if(transaction != null) {
+                if(transaction != null)
                     transaction.rollback();
-                }
+
                 e.printStackTrace();
             }
         }
     }
 
     protected CompletableFuture<Void> asyncTransactionOf(Consumer<Session> sessionConsumer) {
-        return CompletableFuture.runAsync(() -> transactionOf(sessionConsumer));
+        return CompletableFuture.runAsync(() -> {
+            transactionOf(sessionConsumer);
+        });
     }
 
     @Override
     public Optional<T> findById(ID id) {
-        T result;
+        T result = null;
         Session session = sessionFactory.openSession();
         result = session.find(persistable, id);
         session.close();
@@ -79,7 +82,7 @@ public class Repository<T extends Identifiable<ID>, ID extends Serializable> imp
 
     @Override
     public void mergeAll(Collection<T> entities) {
-        transactionOf(session -> entities.forEach(entity -> merge(entity, session)));
+        transactionOf(session -> entities.forEach((entity -> merge(entity, session))));
     }
 
     @Override
@@ -89,17 +92,17 @@ public class Repository<T extends Identifiable<ID>, ID extends Serializable> imp
 
     @Override
     public void removeAll(Collection<T> entities) {
-        transactionOf(session -> entities.forEach(entity -> remove(entity, session)));
+        transactionOf(session -> entities.forEach((entity) -> remove(entity, session)));
     }
 
     @Override
     public CompletableFuture<Void> mergeOneAsync(T entity) {
-        return null;
+        return asyncTransactionOf(session -> merge(entity, session));
     }
 
     @Override
     public CompletableFuture<Void> mergeAllAsync(Collection<T> entities) {
-        return asyncTransactionOf(session -> entities.forEach(entity -> merge(entity, session)));
+        return asyncTransactionOf(session -> entities.forEach((entity -> merge(entity, session))));
     }
 
     @Override
@@ -118,7 +121,7 @@ public class Repository<T extends Identifiable<ID>, ID extends Serializable> imp
     }
 
     @Override
-    public void execute(String sql, Consumer<Query> setParams) {
+    public void execute(String sql, Consumer<javax.persistence.Query> setParams) {
         try (Session session = sessionFactory.openSession()) {
             Query query = session.createQuery(sql);
             setParams.accept(query);
@@ -126,9 +129,8 @@ public class Repository<T extends Identifiable<ID>, ID extends Serializable> imp
         }
     }
 
-
     @Override
-    public <R> void querySingle(String sql, Class<R> result, Consumer<Query> setParams, Consumer<Optional<R>> resultConsumer) {
+    public <R> void querySingle(String sql, Class<R> result, Consumer<javax.persistence.Query> setParams, Consumer<Optional<R>> resultConsumer) {
         try (Session session = sessionFactory.openSession()) {
             Query<R> query = session.createQuery(sql, result);
             setParams.accept(query);
@@ -138,7 +140,7 @@ public class Repository<T extends Identifiable<ID>, ID extends Serializable> imp
     }
 
     @Override
-    public <R> void queryMultiple(String sql, Class<R> result, Consumer<Query> setParams, Consumer<Collection<R>> resultConsumer) {
+    public <R> void queryMultiple(String sql, Class<R> result, Consumer<javax.persistence.Query> setParams, Consumer<Collection<R>> resultConsumer) {
         try (Session session = sessionFactory.openSession()) {
             Query<R> query = session.createQuery(sql, result);
             setParams.accept(query);
@@ -148,7 +150,7 @@ public class Repository<T extends Identifiable<ID>, ID extends Serializable> imp
     }
 
     @Override
-    public <R> void querySingle(CriteriaQuery<R> query, Consumer<Query> setParams, Consumer<Optional<R>> resultConsumer) {
+    public <R> void querySingle(CriteriaQuery<R> query, Consumer<javax.persistence.Query> setParams, Consumer<Optional<R>> resultConsumer) {
         try (Session session = sessionFactory.openSession()) {
             Query<R> q = session.createQuery(query);
             setParams.accept(q);
@@ -158,7 +160,7 @@ public class Repository<T extends Identifiable<ID>, ID extends Serializable> imp
     }
 
     @Override
-    public <R> void queryMultiple(CriteriaQuery<R> query, Consumer<Query> setParams, Consumer<Collection<R>> resultConsumer) {
+    public <R> void queryMultiple(CriteriaQuery<R> query, Consumer<javax.persistence.Query> setParams, Consumer<Collection<R>> resultConsumer) {
         try (Session session = sessionFactory.openSession()) {
             Query<R> q = session.createQuery(query);
             setParams.accept(q);

@@ -1,8 +1,9 @@
-package com.outcast.rpgcore.event;
+package com.outcast.rpgcore.storage.event;
 
-import jakarta.persistence.EntityManagerFactory;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
+
+import javax.persistence.EntityManagerFactory;
 
 public class RepositoryInitializedEvent extends Event {
 

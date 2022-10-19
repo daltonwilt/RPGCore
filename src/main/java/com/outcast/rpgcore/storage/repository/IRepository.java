@@ -1,9 +1,10 @@
-package com.outcast.rpgcore.db;
+package com.outcast.rpgcore.storage.repository;
 
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import org.hibernate.query.Query;
+import com.outcast.rpgcore.storage.Identifiable;
 
+import javax.persistence.Query;
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.Optional;
