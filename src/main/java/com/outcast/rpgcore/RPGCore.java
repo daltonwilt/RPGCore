@@ -157,6 +157,7 @@ public final class RPGCore extends JavaPlugin {
         printBlank();
         info("  RPGCore v%s", getDescription().getVersion());
         info("  You're running on %s.", getServer().getVersion());
+        printBlank();
         printDivider();
 
         initialize();

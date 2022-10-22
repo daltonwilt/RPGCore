@@ -127,6 +127,13 @@ public class CombatLog {
         });
     }
 
+    /**
+     * If the player has an entry grab the latest timestamp
+     * of initiated combat, if any
+     *
+     * @param player player we are checking for entry
+     * @return that latest entry time stamp, if any
+     */
     public Optional<Long> fetchLatestCombatLogTimestamp(Player player) {
         return log.stream()
                 .filter(entry -> entry.getAttacker().equals(player.getUniqueId()) || entry.getVictim().equals(player.getUniqueId()))
@@ -135,32 +142,64 @@ public class CombatLog {
                 .findFirst();
     }
 
+    /**
+     * We want to create two entries one for the attack and one for the victim for combat log information
+     * this way we can track time stamps for the attacker and victim along with being able to update
+     * the entries with new victims and time stamps
+     *
+     * @param attacker PlayerA
+     * @param victim PlayerB
+     */
     public void initiateCombat(Player attacker, Player victim) {
-        // check if log already has these two players in an entry if so create a new entry
-        log.add(new Entry(attacker.getUniqueId(), victim.getUniqueId(), System.currentTimeMillis()));
-        attacker.sendMessage(
-                ChatColor.translateAlternateColorCodes(
-                        '&',
-                        "&8[&4 Enter Combat&8 ]"
-                )
-        );
-        victim.sendMessage(
-                ChatColor.translateAlternateColorCodes(
-                        '&',
-                        "&8[&4 Enter Combat&8 ]"
-                )
-        );
+
+        // Grab entry of the attacker
+        Entry eAttacker = log.stream().filter(entry -> entry.getAttacker().equals(attacker.getUniqueId())).findFirst().orElse(null);
+
+        // If the attacker already has an entry then we will update the time stamp and new victim
+        if(eAttacker != null) {
+            updateEntry(attacker, victim);
+        } else {
+            log.add(new Entry(attacker.getUniqueId(), victim.getUniqueId(), System.currentTimeMillis()));
+            attacker.sendMessage(
+                    ChatColor.translateAlternateColorCodes(
+                            '&',
+                            "&8[&4 Enter Combat&8 ]"
+                    )
+            );
+        }
+
+        // Grab entry of the victim ( as attacker )
+        Entry eVictim = log.stream().filter(entry -> entry.getAttacker().equals(victim.getUniqueId())).findFirst().orElse(null);
+
+        // If the victim already has an entry then we will update the time stamp and the victim ( with the attacker )
+        // if no entry, create entry for victim ( as attacker )
+        if(eVictim != null) {
+            updateEntry(victim, attacker);
+        } else {
+            log.add(new Entry(victim.getUniqueId(), attacker.getUniqueId(), System.currentTimeMillis()));
+            victim.sendMessage(
+                    ChatColor.translateAlternateColorCodes(
+                            '&',
+                            "&8[&4 Enter Combat&8 ]"
+                    )
+            );
+        }
     }
 
-    public void endCombat(Player attacker, Player victim) {
-        log.removeIf(entry -> entry.getAttacker().equals(attacker.getUniqueId()) && entry.getVictim().equals(victim.getUniqueId()));
-        attacker.sendMessage(
-                ChatColor.translateAlternateColorCodes(
-                        '&',
-                        "&8[&2 Exit Combat&8 ]"
-                )
-        );
-        victim.sendMessage(
+    // update the entry's time stamp and victim
+    public void updateEntry(Player playerA, Player playerB) {
+        log.stream()
+                .filter(entry -> entry.getAttacker().equals(playerA.getUniqueId())).findAny().ifPresent(e -> {
+                    e.setInitiationTime(System.currentTimeMillis());
+                    e.setVictim(playerB.getUniqueId());
+                });
+
+    }
+
+    //
+    public void endCombat(Player playerA, Player playerB) {
+        log.removeIf(entry -> entry.getAttacker().equals(playerA.getUniqueId()) && entry.getVictim().equals(playerB.getUniqueId()));
+        playerA.sendMessage(
                 ChatColor.translateAlternateColorCodes(
                         '&',
                         "&8[&2 Exit Combat&8 ]"

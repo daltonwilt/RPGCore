@@ -20,7 +20,7 @@ public class Projectile {
 
     public static double DEFAULT_SIZE = 0.5;
     private boolean active;
-    protected ArmorStand currentAS;
+    protected ArmorStand as;
     protected int maxEntities;
     protected LivingEntity owner;
     protected List<Location> locations;
@@ -66,10 +66,10 @@ public class Projectile {
         return owner != null;
     }
 
-    public final ArmorStand getAS() { return currentAS; }
+    public final ArmorStand getAS() { return as; }
 
     public final void setAS(ArmorStand newAS) {
-        currentAS = newAS;
+        as = newAS;
     }
 
     public final void setMaxEntities(int entities) {

@@ -34,7 +34,7 @@ public class DatabaseService implements AutoCloseable {
 
         addClasses(metadataSources);
 
-        entityManagerFactory = (EntityManagerFactory) metadataSources.buildMetadata()
+        entityManagerFactory = metadataSources.buildMetadata()
                 .getSessionFactoryBuilder()
                 .build();
     }
@@ -58,6 +58,7 @@ public class DatabaseService implements AutoCloseable {
         Bukkit.getPluginManager().callEvent(event);
 
         classes.forEach(metadataSources::addAnnotatedClass);
+        System.out.println("classes : " + classes);
     }
 
     @Override
